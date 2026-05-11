@@ -199,6 +199,12 @@ export function ViewPage({ onNavigate }: ViewPageProps) {
                     <TableHead className="text-muted-foreground">
                       Time
                     </TableHead>
+                    <TableHead className="text-muted-foreground">
+                      Room(s)
+                    </TableHead>
+                    <TableHead className="text-muted-foreground">
+                      Status
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -228,6 +234,22 @@ export function ViewPage({ onNavigate }: ViewPageProps) {
                         <span className="inline-flex items-center gap-1 text-primary">
                           <Clock className="h-3 w-3" />
                           {exam.time}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {exam.rooms?.map((room) => room.room).join(", ") ?? "—"}
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={
+                            exam.status === "Fresh"
+                              ? "text-emerald-600 font-medium"
+                              : exam.status === "Repeater"
+                                ? "text-orange-600 font-medium"
+                                : "text-muted-foreground"
+                          }
+                        >
+                          {exam.status ?? "Unknown"}
                         </span>
                       </TableCell>
                     </TableRow>

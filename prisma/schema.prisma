@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  courses   Course[]
+  examPlans ExamPlan[]
+}
+
+model Course {
+  id              String      @id @default(cuid())
+  courseCode      String
+  courseName      String
+  totalStudents   Int
+  freshSemesters  Int[]
+  repeatSemesters Int[]
+  userId          String
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  dateSheets      DateSheet[]
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, courseCode])
+  @@index([userId])
+}
+
+model ExamPlan {
+  id              String      @id @default(cuid())
+  title           String
+  startDate       DateTime
+  endDate         DateTime
+  slotsPerDay     Int
+  slotDuration    Int
+  breakDuration   Int
+  dayStartTime    String
+  dayEndTime      String
+  totalRooms      Int
+  studentsPerRoom Int
+  userId          String
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  dateSheets      DateSheet[]
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model DateSheet {
+  id         String   @id @default(cuid())
+  examPlanId String
+  courseId   String
+  semester   Int
+  date       DateTime
+  slotNumber Int
+  startTime  String
+  endTime    String
+  rooms      Json
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  examPlan ExamPlan @relation(fields: [examPlanId], references: [id])
+  course   Course   @relation(fields: [courseId], references: [id])
+
+  @@index([examPlanId])
+  @@index([courseId])
+}

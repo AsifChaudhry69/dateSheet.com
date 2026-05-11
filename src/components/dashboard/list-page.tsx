@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,38 +11,50 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Eye, Trash2, FileText, Calendar } from "lucide-react";
+import { Eye, FileText, Calendar } from "lucide-react";
+import { toast } from "sonner";
 import { useDateSheets } from "@/src/lib/date-sheet-context";
+import {
+  getExamPlans,
+  getDateSheetByExamPlan,
+  ExamPlanSummary,
+} from "@/src/api/examPlan";
+import { DateSheet } from "@/src/lib/types";
 
 interface ListPageProps {
   onNavigate: (tab: string) => void;
 }
 
 export function ListPage({ onNavigate }: ListPageProps) {
-  const { dateSheets, deleteDateSheet, setSelectedDateSheet } = useDateSheets();
+  const { setSelectedDateSheet } = useDateSheets();
+  const [examPlans, setExamPlans] = useState<ExamPlanSummary[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
 
-  const handleView = (id: string) => {
-    const sheet = dateSheets.find((s) => s.id === id);
-    if (sheet) {
-      setSelectedDateSheet(sheet);
-      onNavigate("view");
-    }
-  };
+  useEffect(() => {
+    let cancelled = false;
 
-  const handleDelete = (id: string) => {
-    deleteDateSheet(id);
-  };
+    const loadExamPlans = async () => {
+      setIsLoading(true);
+      try {
+        const plans = await getExamPlans();
+        if (!cancelled) {
+          setExamPlans(plans);
+        }
+      } catch (error: any) {
+        toast.error(error?.message || "Failed to load exam plans");
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadExamPlans();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -51,149 +64,165 @@ export function ListPage({ onNavigate }: ListPageProps) {
     });
   };
 
+  const handleView = async (examPlanId: string) => {
+    setLoadingPlanId(examPlanId);
+    try {
+      const data = await getDateSheetByExamPlan(examPlanId);
+      if (!data) {
+        toast.error("Date sheet data could not be loaded.");
+        return;
+      }
+
+      const exams = Object.entries(data.dateSheetBySemester).flatMap(
+        ([semesterKey, entries]) => {
+          const semester = Number(semesterKey.replace("semester", ""));
+          return entries.map((entry) => ({
+            courseName: entry.courseName,
+            courseCode: entry.courseCode,
+            date: new Date(entry.examDate).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            }),
+            day: new Date(entry.examDate).toLocaleDateString("en-US", {
+              weekday: "long",
+            }),
+            time: `${entry.startTime} - ${entry.endTime}`,
+            semester,
+            rooms: entry.rooms ?? [],
+            status: entry.status,
+          }));
+        },
+      );
+
+      const selected: DateSheet = {
+        id: data.examPlan.id,
+        title: data.examPlan.title,
+        semester: "all",
+        createdAt: data.examPlan.createdAt,
+        startDate: data.examPlan.startDate,
+        endDate: data.examPlan.endDate,
+        slotsPerDay: data.examPlan.slotsPerDay,
+        slotTime: `${data.examPlan.dayStartTime} - ${data.examPlan.dayEndTime}`,
+        numberOfRooms: data.examPlan.totalRooms,
+        studentsPerRoom: data.examPlan.studentsPerRoom,
+        exams,
+      };
+
+      setSelectedDateSheet(selected);
+      onNavigate("view");
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to load date sheet");
+    } finally {
+      setLoadingPlanId(null);
+    }
+  };
+
   return (
     <div className="p-8 max-w-6xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground mb-2">
-          Generated Date Sheets
-        </h1>
+        <h1 className="text-3xl font-bold text-foreground mb-2">Exam Plans</h1>
         <p className="text-muted-foreground">
-          View and manage all your generated exam date sheets
+          Select an exam plan to view its generated date sheet.
         </p>
       </div>
 
-      {dateSheets.length === 0 ? (
-        <Card className="bg-card border-border">
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <div className="p-4 rounded-full bg-primary/10 mb-4">
-              <Calendar className="h-12 w-12 text-primary" />
-            </div>
-            <h3 className="text-xl font-semibold text-foreground mb-2">
-              No Date Sheets Yet
-            </h3>
-            <p className="text-muted-foreground text-center max-w-md mb-6">
-              You have not generated any exam date sheets. Upload an Excel file
-              and configure your exam settings to get started.
-            </p>
-            <Button
-              onClick={() => onNavigate("generate")}
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              Generate Date Sheet
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card className="bg-card border-border">
-          <CardHeader>
-            <CardTitle className="text-card-foreground flex items-center gap-2">
-              <FileText className="h-5 w-5 text-primary" />
-              All Date Sheets ({dateSheets.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-border hover:bg-transparent">
-                    <TableHead className="text-muted-foreground">
-                      Title
-                    </TableHead>
-                    <TableHead className="text-muted-foreground">
-                      Semester
-                    </TableHead>
-                    <TableHead className="text-muted-foreground">
-                      Exam Period
-                    </TableHead>
-                    <TableHead className="text-muted-foreground">
-                      Total Exams
-                    </TableHead>
-                    <TableHead className="text-muted-foreground">
-                      Created
-                    </TableHead>
-                    <TableHead className="text-muted-foreground text-right">
-                      Actions
-                    </TableHead>
+      <Card className="bg-card border-border">
+        <CardHeader>
+          <CardTitle className="text-card-foreground flex items-center gap-2">
+            <FileText className="h-5 w-5 text-primary" />
+            Exam Plans ({examPlans.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-border hover:bg-transparent">
+                  <TableHead className="text-muted-foreground">Title</TableHead>
+                  <TableHead className="text-muted-foreground">
+                    Exam Period
+                  </TableHead>
+                  <TableHead className="text-muted-foreground">Rooms</TableHead>
+                  <TableHead className="text-muted-foreground">
+                    Students/Room
+                  </TableHead>
+                  <TableHead className="text-muted-foreground">
+                    Total Slots
+                  </TableHead>
+                  <TableHead className="text-muted-foreground">
+                    Created
+                  </TableHead>
+                  <TableHead className="text-muted-foreground text-right">
+                    Actions
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={7}
+                      className="text-center py-8 text-muted-foreground"
+                    >
+                      Loading exam plans...
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {dateSheets.map((sheet) => (
+                ) : examPlans.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={7}
+                      className="text-center py-8 text-muted-foreground"
+                    >
+                      No exam plans found. Generate a new exam plan to get
+                      started.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  examPlans.map((plan) => (
                     <TableRow
-                      key={sheet.id}
+                      key={plan.id}
                       className="border-border hover:bg-secondary/50"
                     >
                       <TableCell className="font-medium text-foreground">
-                        {sheet.title}
+                        {plan.title}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {sheet.semester === "all"
-                          ? "All Semesters"
-                          : `Semester ${sheet.semester}`}
+                        {formatDate(plan.startDate)} -{" "}
+                        {formatDate(plan.endDate)}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {formatDate(sheet.startDate)} - {formatDate(sheet.endDate)}
+                        {plan.totalRooms}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {sheet.exams.length} exams
+                        {plan.studentsPerRoom}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {formatDate(sheet.createdAt)}
+                        {plan.totalDateSheets}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {formatDate(plan.createdAt)}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleView(sheet.id)}
-                            className="border-border hover:bg-primary hover:text-primary-foreground hover:border-primary"
-                          >
-                            <Eye className="h-4 w-4 mr-1" />
-                            View
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger >
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                              >
-                                <Trash2 className="h-4 w-4 mr-1" />
-                                Delete
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent className="bg-card border-border">
-                              <AlertDialogHeader>
-                                <AlertDialogTitle className="text-foreground">
-                                  Delete Date Sheet
-                                </AlertDialogTitle>
-                                <AlertDialogDescription className="text-muted-foreground">
-                                  Are you sure you want to delete "{sheet.title}"?
-                                  This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel className="border-border">
-                                  Cancel
-                                </AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDelete(sheet.id)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleView(plan.id)}
+                          className="border-border hover:bg-primary hover:text-primary-foreground hover:border-primary"
+                          disabled={loadingPlanId === plan.id}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          {loadingPlanId === plan.id ? "Loading..." : "View"}
+                        </Button>
                       </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -8,7 +8,9 @@ import {
   List,
   Eye,
   Info,
+  LogOut,
 } from "lucide-react";
+import { signOut } from "next-auth/react";
 
 interface SidebarProps {
   activeTab: string;
@@ -22,9 +24,14 @@ const menuItems = [
     icon: Info,
   },
   {
-    id: "generate",
-    label: "Generate ",
+    id: "update-courses",
+    label: "Update Courses",
     icon: Upload,
+  },
+  {
+    id: "generate-date-sheet",
+    label: "Generate Date Sheet",
+    icon: Calendar,
   },
   {
     id: "list",
@@ -65,7 +72,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                   "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200",
                   activeTab === item.id
                     ? "bg-primary text-primary-foreground"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent",
                 )}
               >
                 <item.icon className="h-5 w-5" />
@@ -76,13 +83,20 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
         </ul>
       </nav>
 
-      <div className="p-4 border-t border-sidebar-border">
+      <div className="p-4 border-t border-sidebar-border space-y-2">
         <div className="flex items-center gap-3 px-4 py-3">
           <FileSpreadsheet className="h-5 w-5 text-primary" />
           <span className="text-sm text-muted-foreground">
             Exam Scheduling System
           </span>
         </div>
+        <button
+          onClick={() => signOut({ callbackUrl: "/sign-in" })}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-red-600 hover:bg-red-500/10"
+        >
+          <LogOut className="h-5 w-5" />
+          Logout
+        </button>
       </div>
     </aside>
   );
