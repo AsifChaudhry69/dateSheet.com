@@ -133,7 +133,8 @@ type SemesterEntry = {
 // ─── Helpers ─────────────────────────────────────────────────
 
 function getAllSemesters(course: CourseType): number[] {
-  return [...course.freshSemesters, ...course.repeatSemesters];
+  const all = [...course.freshSemesters, ...course.repeatSemesters];
+  return [...new Set(all)];
 }
 
 function timeToMinutes(time: string): number {
@@ -238,8 +239,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ✅ Fetch all courses in ONE query
+    // ✅ Fetch only the logged-in user's courses
     const courses = (await prisma.course.findMany({
+      where: { userId },
       orderBy: { totalStudents: "desc" },
     })) as CourseType[];
 
@@ -492,6 +494,14 @@ export async function POST(req: NextRequest) {
  */
 export async function GET(req: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user?.id) {
+      return NextResponse.json(
+        createResponse(false, "Unauthorized", null),
+        { status: 401 },
+      );
+    }
+
     const { searchParams } = new URL(req.url);
     const examPlanId = searchParams.get("examPlanId");
 
@@ -513,6 +523,13 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    if (examPlan.userId !== session.user.id) {
+      return NextResponse.json(
+        createResponse(false, "Forbidden: you do not own this exam plan", null),
+        { status: 403 },
+      );
+    }
+
     const dateSheets = await prisma.dateSheet.findMany({
       where: { examPlanId },
       include: { course: true },
@@ -522,6 +539,7 @@ export async function GET(req: NextRequest) {
     const dateSheetBySemester: Record<string, any[]> = {};
 
     dateSheets.forEach((ds) => {
+      if (!ds.course) return;
       const semKey = `semester${ds.semester}`;
       if (!dateSheetBySemester[semKey]) {
         dateSheetBySemester[semKey] = [];
@@ -538,6 +556,9 @@ export async function GET(req: NextRequest) {
         startTime: ds.startTime,
         endTime: ds.endTime,
         rooms: ds.rooms,
+        status: ds.course.freshSemesters.includes(ds.semester)
+          ? "Fresh"
+          : "Repeater",
       });
     });
 

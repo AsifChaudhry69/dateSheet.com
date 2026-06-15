@@ -62,7 +62,7 @@ model ExamPlan {
 model DateSheet {
   id         String   @id @default(cuid())
   examPlanId String
-  courseId   String
+  courseId   String?
   semester   Int
   date       DateTime
   slotNumber Int
@@ -73,7 +73,7 @@ model DateSheet {
   updatedAt  DateTime @updatedAt
 
   examPlan ExamPlan @relation(fields: [examPlanId], references: [id])
-  course   Course   @relation(fields: [courseId], references: [id])
+  course   Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
 
   @@index([examPlanId])
   @@index([courseId])

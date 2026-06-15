@@ -1,10 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth/next";
 import prisma from "../../../../lib/db";
 import { createResponse } from "../../../../utils/createResponse";
+import { authOptions } from "../../../../lib/auth";
 
 export async function GET(req: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user?.id) {
+      return NextResponse.json(
+        createResponse(false, "Unauthorized", null),
+        { status: 401 },
+      );
+    }
+
+    const userId = session.user.id;
+
     const examPlans = await prisma.examPlan.findMany({
+      where: { userId },
       orderBy: { createdAt: "desc" },
       include: {
         _count: {

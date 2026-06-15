@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import {
+  BookOpen,
   Calendar,
   FileSpreadsheet,
   Upload,
@@ -22,6 +23,11 @@ const menuItems = [
     id: "instructions",
     label: "Instructions",
     icon: Info,
+  },
+  {
+    id: "courses",
+    label: "Courses",
+    icon: BookOpen,
   },
   {
     id: "update-courses",

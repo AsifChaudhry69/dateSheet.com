@@ -12,10 +12,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { CalendarDays, Eye, EyeOff } from "lucide-react";
+import { signIn } from "next-auth/react";
 
 import { useRegister } from "../../services/use-sign-up";
 import { useRouter } from "next/navigation";
-import { routerServerGlobal } from "next/dist/server/lib/router-utils/router-server-context";
 
 const signUpSchema = z
   .object({
@@ -81,21 +81,28 @@ export default function SignUpPage() {
       },
 
       {
-        onSuccess: (response) => {
+        onSuccess: async (response) => {
           toast.success(response.message);
-        
 
-          console.log("User Registered:", response);
-
-        
           if (response.data?.token) {
             localStorage.setItem(
               "token",
               response.data.token,
             );
           }
-          router.push("/dashboard");
 
+          // Auto-login with NextAuth so the user gets a session cookie
+          const result = await signIn("credentials", {
+            email: data.email,
+            password: data.password,
+            redirect: false,
+          });
+
+          if (result?.error) {
+            toast.error("Account created, but auto-login failed. Please sign in manually.");
+          }
+
+          router.push("/dashboard");
           reset();
         },
 

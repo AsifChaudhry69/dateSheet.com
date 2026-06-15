@@ -271,7 +271,18 @@ export async function POST(req: NextRequest) {
 
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user?.id) {
+      return NextResponse.json(
+        createResponse(false, "Unauthorized", null),
+        { status: 401 }
+      );
+    }
+
+    const userId = session.user.id;
+
     const courses = await prisma.course.findMany({
+      where: { userId },
       orderBy: {
         courseCode: "asc",
       },

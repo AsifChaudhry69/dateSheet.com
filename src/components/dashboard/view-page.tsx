@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, Calendar, Clock, BookOpen, Printer } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, BookOpen, Printer, Download } from "lucide-react";
 import { useDateSheets } from "@/src/lib/date-sheet-context";
 import { ExamSlot } from "@/src/lib/types";
 
@@ -65,6 +65,16 @@ export function ViewPage({ onNavigate }: ViewPageProps) {
     window.print();
   };
 
+  const handleDownload = () => {
+    const downloadUrl = `/api/dashboard/dateSheet/download?examPlanId=${encodeURIComponent(selectedDateSheet.id)}`;
+    const a = document.createElement("a");
+    a.href = downloadUrl;
+    a.download = `datesheet-${selectedDateSheet.title}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
   return (
     <div className="p-8 max-w-6xl mx-auto">
       <div className="mb-8 flex items-center justify-between">
@@ -89,6 +99,14 @@ export function ViewPage({ onNavigate }: ViewPageProps) {
             </p>
           </div>
         </div>
+        <Button
+          onClick={handleDownload}
+          variant="outline"
+          className="border-border hover:bg-primary hover:text-primary-foreground hover:border-primary print:hidden"
+        >
+          <Download className="h-4 w-4 mr-2" />
+          Download Date Sheet
+        </Button>
         <Button
           onClick={handlePrint}
           variant="outline"

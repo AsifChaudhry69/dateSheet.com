@@ -20,6 +20,7 @@ export interface ExamSlot {
   day: string;
   time: string;
   semester: number;
+  students?: number;
   status?: "Fresh" | "Repeater";
   rooms?: RoomDetail[];
 }

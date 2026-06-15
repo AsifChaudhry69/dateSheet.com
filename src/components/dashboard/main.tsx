@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Sidebar } from "./side-bar";
 import { InstructionsPage } from "./instructions-page";
+import { CoursesPage } from "./courses-page";
 import { GeneratePage } from "./generate";
 import { GenerateDateSheetPage } from "./generate-date-sheet";
 import { ListPage } from "./list-page";
@@ -19,6 +20,8 @@ export function Dashboard() {
     switch (activeTab) {
       case "instructions":
         return <InstructionsPage />;
+      case "courses":
+        return <CoursesPage />;
       case "update-courses":
         return <GeneratePage />;
       case "generate-date-sheet":
